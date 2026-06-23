@@ -1,4 +1,4 @@
-# ReAct Agent for code-refactoring
+# SMART Reflexion Agent for code-refactoring
 Repository for a SMART Reflexion Agent for code-refactoring, using tool calling for Retrieved Augmented Generation (RAG). Built using LangGraph and LangChain Expression Language (LCEL).
 
 ## 1. Create the project directory
