@@ -1,0 +1,6 @@
+openai==1.68.2
+langchain
+langchain_community==0.3.24
+langchain-google-genai
+langchain-openai==0.3.10
+langgraph
