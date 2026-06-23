@@ -21,7 +21,7 @@ Clone this repository inside the root folder <br>
 <br>
 **Command:**
 ```
-git clone "https://github.com/estebanhramirez/REFLEXION-AGENTIC-AI-for-motivation-letter.git" "~/<prefix_path>/<project_name>/Repo"
+git clone "https://github.com/estebanhramirez/SMART-Reflexion-Agent-for-code-refactoring.git" "~/<prefix_path>/<project_name>/Repo"
 ```
 **Result:**
 ```
