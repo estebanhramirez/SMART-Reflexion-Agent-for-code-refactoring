@@ -49,7 +49,7 @@ source "~/<prefix_path>/<project_name>/venv/bin/activate"
 ```
 or (in Windows)
 ```
-c:\Projects\REFLEXION-AGENTIC-AI-for-motivation-letter\venv\Scripts\activate.bat
+~\<prefix_path>\<project_name>\venv\Scripts\activate.bat
 ```
 We can deactivate the virtual environment using `deactivate.bat`.
 
