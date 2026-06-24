@@ -15,13 +15,15 @@ from langchain_core.messages import ToolMessage # To create tool messages with t
 from langchain_core.messages import SystemMessage # To create system messages for the LLM.
 from langchain_core.messages import AIMessage # To create AI messages with the LLM's responses.
 
-
 # LangGraph imports
 from langgraph.graph import END
 from langgraph.graph import MessageGraph # To streamline workflow creation and state management: LangGraph provides the prebuilt solution `MessageGraph`; This simplifies the process of setting up conversational workflows by handling the underlying structure automatically.
 
-# LangChain Google GenAI imports
+# LLMs imports
 from langchain_google_genai import ChatGoogleGenerativeAI # To create the LLM that will drive the agent's reasoning and tool usage.
+
+# Pydantic imports
+from pydantic import BaseModel, Field # To create the Pydantic models for the instructions and reflection.
 
 
 # =========================================== GitHub Functions ===========================================
@@ -198,6 +200,19 @@ def recursive_tool_execution(messages_history, llm, tools_map):
 # =========================================== BEGGINING OF EXECUTION ===========================================
 
 
+class Reflection(BaseModel):
+    effects: str = Field(description="What are the possible effects of executing the commands in this instructions")
+    conflicts: str = Field(description="What are the possible conflicts that may arise from executing the commands in this instructions")
+    needed: str = Field(description="What other commands might still be needed to achieve the final goal")
+    unneeded: str = Field(description="What commands might not be needed to achieve the final goal")
+
+class Instructions(BaseModel):
+    objective: str = Field(description="How the commands in this instructions help achieve the final goal")
+    reflection: Reflection = Field(description="Self-critique of the instructions")
+    commands: List[str] = Field(description="Sequence of commands to be executed towards the realization of the final goal")
+
+
+
 if __name__ == "__main__":
 
     # Initial node ===========================================================
@@ -227,35 +242,46 @@ if __name__ == "__main__":
 
         initial_langchain_workflow_llm_with_tools = initial_langchain_workflow_llm.bind_tools(tools)
 
-        # We use ChatPromptTemplate from LangChain to structure the prompt. The prompt has two main parts:
-        # 1. A SystemMessage that sets the context for the LLM, explaining its role as a Reflection Agent.
-        # 2. A MessagesPlaceholder object used to inject the actual content or message that the post will be based on. The placeholder will be populated with the user’s request at runtime.
-        propose_initial_changes_prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    "You are a Reflection Agent that can reason about the changes to be made in a GitHub repository. You have access to the following tools: get_modified_files, get_file_changes, get_file_content, list_files_in_dir, and agent_modify_line. Use these tools to gather information about the repository and propose changes based on the user's request.",
-                ),
-                MessagesPlaceholder(variable_name="messages"),
-            ]
-        )
+        # 2. We use ChatPromptTemplate from LangChain to structure the prompt. The prompt has two main parts:
+        # 2.1. A SystemMessage that sets the context for the LLM, explaining its role as a Reflection Agent.
+        # 2.2. A MessagesPlaceholder object used to inject the actual content or message that the post will be based on. The placeholder will be populated with the user’s request at runtime.
+        initial_langchain_workflow_prompt = ChatPromptTemplate.from_messages([
+            (
+                "system",
+                "You are a Reflection Agent that can reason about the changes to be made in a GitHub repository. "
+                "You have access to the following tools: get_modified_files, get_file_changes, get_file_content, "
+                "list_files_in_dir, and agent_modify_line. Use these tools to gather information and propose changes.",
+            ),
+            MessagesPlaceholder(variable_name="messages")
+        ])
 
+        # 3. Restructure the Workflow Chain
         initial_langchain_workflow = (
-            propose_initial_changes_prompt
-            |
+            # Step A: Format the prompt, then instantly invoke the LLM
             RunnablePassthrough.assign(
-                messages = lambda x: x['messages'] + [initial_langchain_workflow_llm_with_tools.invoke(x['messages'])]
+                messages = lambda x: initial_langchain_workflow_llm_with_tools.invoke(
+                    initial_langchain_workflow_prompt.format_messages(messages=x['messages'])
+                )
             )
             |
+            # Step B: Append the newly generated AI message to the historic list
+            RunnablePassthrough.assign(
+                messages = lambda x: x['messages'] + [x['messages']] # Combines old list + newest LLM response
+            )
+            |
+            # Step C: Hand off the accumulated history to your recursive tool executor
             RunnablePassthrough.assign(
                 messages = lambda x: recursive_tool_execution(x['messages'], initial_langchain_workflow_llm_with_tools, tools_map)
             )
-            |
-            RunnableLambda(lambda x: x)
         )
 
-        initial_changes = initial_langchain_workflow.invoke({"messages": state})
-        return [AIMessage(content=initial_changes.content)]
+        # 4. Invoke the chain
+        output_state = initial_langchain_workflow.invoke({"messages": state})
+        
+        # 5. Correctly extract the last AIMessage from the returned dictionary list
+        final_msg = output_state["messages"][-1]
+        
+        return [final_msg]
 
 
         """
