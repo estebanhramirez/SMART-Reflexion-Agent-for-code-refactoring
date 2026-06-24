@@ -1,8 +1,9 @@
 # General imports
 import re # To parse the GitHub's responses and extract modified files.
+import json # To parse the LLM's responses and extract the tool calls.
 import subprocess # To execute the GitHub commands and capture their output.
 from pathlib import Path # Used for file handling and directory listing
-from typing import Optional, List, Sequence # Used for type hinting the tools' inputs and outputs
+from typing import Any, Dict, Optional, List, Sequence # Used for type hinting the tools' inputs and outputs
 
 # LangChain imports
 from langchain.tools import tool # To create tools through the @tool decorator.
@@ -173,136 +174,87 @@ def agent_modify_line(file_path: str, line_number: int, new_content: str) -> Opt
         return f"Error modifying file: {str(e)}"
 
 
-
-def execute_tool(tool_call, tools_map):
-    print(f"Debugging: tool_call and tools_map exist. tool_call={tool_call}, tools_map={tools_map}")
-    output_tool = tools_map[tool_call['name']].invoke(tool_call['args'])
-    tool_message = ToolMessage(content=output_tool, tool_call_id=tool_call['id'])
-    return (tool_message)
-
-
-def recursive_tool_execution(messages_history, llm, tools_map):
-    latest_message = messages_history[-1]
-
-    if getattr(latest_message, 'tool_calls', False):
-        for tool_call in latest_message.tool_calls:
-            tool_message = execute_tool(tool_call, tools_map)
-            messages_history.append(tool_message)
-
-        llm_response = llm.invoke(messages_history)
-        messages_history.append(llm_response)
-
-        return(recursive_tool_execution(messages_history, llm, tools_map))
-    else:
-        return (messages_history)
-
-
 # =========================================== BEGGINING OF EXECUTION ===========================================
 
 
 class Reflection(BaseModel):
-    effects: str = Field(description="What are the possible effects of executing the commands in this instructions")
-    conflicts: str = Field(description="What are the possible conflicts that may arise from executing the commands in this instructions")
-    needed: str = Field(description="What other commands might still be needed to achieve the final goal")
-    unneeded: str = Field(description="What commands might not be needed to achieve the final goal")
+    effects: str = Field(description="What are the possible effects of executing the tool calls in this instructions")
+    conflicts: str = Field(description="What are the possible conflicts that may arise from executing the tool calls in this instructions")
+    needed: str = Field(description="What other tool calls might still be needed to achieve the final goal")
+    unneeded: str = Field(description="What tool calls might not be needed to achieve the final goal")
 
 class Instructions(BaseModel):
-    objective: str = Field(description="How the commands in this instructions help achieve the final goal")
-    reflection: Reflection = Field(description="Self-critique of the instructions")
-    commands: List[str] = Field(description="Sequence of commands to be executed towards the realization of the final goal")
+    objective: str = Field(description="How the tool calls in this instructions help achieve the final goal")
+    reflection: Reflection = Field(description="Self-critique of this instructions")
+    tool_calls: List[str] = Field(description="Sequence of tool calls to be executed towards the realization of the final goal")
+
+
+def execute_tools(state: List[BaseMessage], tools_map: Dict[str, Any]) -> List[BaseMessage]: 
+    tool_messages = []
+    for tool_call in state[-1].tool_calls:
+        if tool_call["name"] =="Instructions":
+            instructions_tool_calls = tool_call["args"].get("instructions_tool_calls", [])
+            tool_results = {}
+            for instructions_tool_call in instructions_tool_calls:
+                result = tools_map[instructions_tool_call["name"]].invoke(instructions_tool_call["args"])
+                tool_results[instructions_tool_call["id"]] = result
+            tool_messages.append(ToolMessage(content=json.dumps(tool_results), tool_call_id=tool_call["id"]))
+    return (tool_messages)
+
+
+def event_loop(state: List[BaseMessage]) -> str:
+    count_tool_visits = sum(isinstance(item, ToolMessage) for item in state)
+    if count_tool_visits >= 2:
+        return (END)
+    else:
+        return ("execute_tools")
 
 
 
 if __name__ == "__main__":
 
-    # Initial node ===========================================================
-    def propose_initial_changes_node(state: Sequence[BaseMessage]) -> List[BaseMessage]:
-        """
-            The `propose_initial_changes_node` function acts as the starting point in the Reflection Agent's
-            workflow. It generates initial changes based on the current state of the conversation,
-            which contains all previous messages (user inputs, AI responses, and system instructions).
+    # LLMs definition
+    llm_responder_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key="AQ.Ab8RN6II3pE9opZ-ENdyg1dm8GB4XoOv0pU-dMTYd9eNMSCokA")
+    llm_revisor_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key="AQ.Ab8RN6KUrq59ty82WP5wvxPe2jPbHxoDmXzxph_F8E_qoFcTpg")
 
-            Args:
-                state (Sequence[BaseMessage]): A sequence of BaseMessage objects (i.e., HumanMessage, AIMessage, SystemMessage, ToolMessage).
-                                               These messages provide the context necessary for generating a meaningful response.
+    # Tools definition
+    tools = [get_modified_files, get_file_changes, get_file_content, list_files_in_dir, agent_modify_line]
+    tools_map = { tool.name:tool for tool in tools }
 
-            Returns:
-                List[AIMessage]: A list containing a single AIMessage object that encapsulates the proposed initial changes.
-                                 The content of this message is derived from the output of the `initial_langchain_workflow`,
-                                 which processes the current state of the conversation to generate a response.
-        """
+    # Prompt template definition
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "{agent_persona}"),
+        MessagesPlaceholder(variable_name="messages")
+    ])
 
-        initial_langchain_workflow_llm = ChatGoogleGenerativeAI(
-            model="gemini-3.5-flash",
-            google_api_key="AQ.Ab8RN6II3pE9opZ-ENdyg1dm8GB4XoOv0pU-dMTYd9eNMSCokA" # "AQ.Ab8RN6KUrq59ty82WP5wvxPe2jPbHxoDmXzxph_F8E_qoFcTpg"
-        )
+    # Nodes logic definition
+    responder_persona = "You are a Responder Agent that can reason about the changes to be made in a GitHub repository. You have access to the following tools: get_modified_files, get_file_changes, get_file_content, list_files_in_dir, and agent_modify_line. Use these tools to gather information and propose changes."
+    responder_langchain_workflow = prompt_template.partial(agent_persona = responder_persona) | llm_responder_langchain_workflow.bind_tools(tools + [Instructions])
 
-        tools = [get_modified_files, get_file_changes, get_file_content, list_files_in_dir, agent_modify_line]
-        tools_map = { tool.name:tool for tool in tools }
+    revisor_persona = "You are a Reflection Agent that can reason about the changes to be made in a GitHub repository. You have access to the following tools: get_modified_files, get_file_changes, get_file_content, list_files_in_dir, and agent_modify_line. Use these tools to gather information and propose changes."
+    revisor_langchain_workflow = prompt_template.partial(agent_persona = revisor_persona) | llm_revisor_langchain_workflow.bind_tools(tools + [Instructions])
 
-        initial_langchain_workflow_llm_with_tools = initial_langchain_workflow_llm.bind_tools(tools)
-
-        # 2. We use ChatPromptTemplate from LangChain to structure the prompt. The prompt has two main parts:
-        # 2.1. A SystemMessage that sets the context for the LLM, explaining its role as a Reflection Agent.
-        # 2.2. A MessagesPlaceholder object used to inject the actual content or message that the post will be based on. The placeholder will be populated with the user’s request at runtime.
-        initial_langchain_workflow_prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                "You are a Reflection Agent that can reason about the changes to be made in a GitHub repository. "
-                "You have access to the following tools: get_modified_files, get_file_changes, get_file_content, "
-                "list_files_in_dir, and agent_modify_line. Use these tools to gather information and propose changes.",
-            ),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-
-        # 3. Restructure the Workflow Chain
-        initial_langchain_workflow = (
-            # Step A: Format the prompt, then instantly invoke the LLM
-            RunnablePassthrough.assign(
-                messages = lambda x: initial_langchain_workflow_llm_with_tools.invoke(
-                    initial_langchain_workflow_prompt.format_messages(messages=x['messages'])
-                )
-            )
-            |
-            # Step B: Append the newly generated AI message to the historic list
-            RunnablePassthrough.assign(
-                messages = lambda x: x['messages'] + [x['messages']] # Combines old list + newest LLM response
-            )
-            |
-            # Step C: Hand off the accumulated history to your recursive tool executor
-            RunnablePassthrough.assign(
-                messages = lambda x: recursive_tool_execution(x['messages'], initial_langchain_workflow_llm_with_tools, tools_map)
-            )
-        )
-
-        # 4. Invoke the chain
-        output_state = initial_langchain_workflow.invoke({"messages": state})
-        
-        # 5. Correctly extract the last AIMessage from the returned dictionary list
-        final_msg = output_state["messages"][-1]
-        
-        return [final_msg]
-
-
-        """
-            A sequence of messages representing the current state of the conversation;
-            includes previous AI responses, user inputs, and system-level instructions.
-            The messages are used to provide context to the reflection process, guiding
-            the generation of a more refined output.
-        """
-
-
-
-
+    # Graph definition
     graph = MessageGraph()
 
+    graph.add_node("respond", responder_langchain_workflow)
+    graph.add_node("execute_tools", execute_tools)
+    graph.add_node("revisor", revisor_langchain_workflow)
 
+    graph.set_entry_point("respond")
+
+    graph.add_edge("respond", "execute_tools")
+    graph.add_edge("execute_tools", "revisor")
+    graph.add_conditional_edges("revisor", event_loop)
 
     # Execute the agent
-    initial_query = {'content': "Add a debugging print statement inside the `execute_tool()` function in the file `main.py`, to make sure the arguments to the function exists."}
-    initial_langchain_workflow_output = initial_langchain_workflow.invoke(initial_query)
+    app = graph.compile()
+    responses = app.invoke(
+        """I'm pre-diabetic and need to lower my blood sugar, and I have heart issues.
+        What breakfast foods should I eat and avoid"""
+    )
 
     # Visualize the messages history
-    print(f"\n\nNumber of messages in the history: {len(initial_langchain_workflow_output['messages_history'])} (See details below)\n")
-    for i, message in enumerate(initial_langchain_workflow_output['messages_history']):
+    print(f"\n\nNumber of messages in the history: {len(responses)} (See details below)\n")
+    for i, message in enumerate(responses):
         print(f"Message No. {i}: {message}\n")
