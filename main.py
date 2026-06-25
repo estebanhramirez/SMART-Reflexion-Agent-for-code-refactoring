@@ -62,7 +62,7 @@ def run_git_diff(modified_files):
 
 # =========================================== Tools ===========================================
 
-
+@tool
 def get_modified_files() -> List[str]:
     """
         A function that retrieves the list of modified files in a GitHub repository by executing the 'git status' command and parsing its output.
@@ -78,32 +78,31 @@ def get_modified_files() -> List[str]:
     modified_files = [match.strip() for match in matches] # Clean up any trailing whitespace from the file names
     return (modified_files)
 
-
-def get_file_changes(modified_files: List[str]) -> str:
+@tool
+def get_file_changes(file_path: str) -> str:
     """
         A function that retrieves the changes in the modified files of a GitHub repository by executing the 'git diff' command and parsing its output.
 
         Args:
-            modified_files (List[str]): A list of modified files for which to retrieve changes.
+            file_path (str): A modified file for which to retrieve changes.
         Returns:
             str: The output of the 'git diff' command.
     """
-    git_diff_output = run_git_diff(modified_files)
+    git_diff_output = run_git_diff([file_path])
     return (git_diff_output)
 
-
-def get_file_content(file_path: str, encoding: str = "utf-8") -> str:
+@tool
+def get_file_content(file_path: str) -> str:
     """
         Opens a file and returns its content as a string.
       
         Args:
             file_path (str): The path to the file you want to read.
-            encoding (str): The text encoding (defaults to 'utf-8').
         Returns:
             str: The file content as a string, or None if an error occurs.
     """
     try:
-        with open(file_path, "r", encoding=encoding) as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             return (file.read())
     except FileNotFoundError:
         raise FileNotFoundError(f"Error: The file at '{file_path}' was not found.")
@@ -115,7 +114,7 @@ def get_file_content(file_path: str, encoding: str = "utf-8") -> str:
         raise UnicodeDecodeError(f"Error: Could not decode the file using {encoding} encoding.")
         return (None)
 
-
+@tool
 def list_files_in_dir(folder_path: str = ".") -> List[str]:
     """
         Lists all files in the specified folder (non-recursive).
@@ -140,8 +139,8 @@ def list_files_in_dir(folder_path: str = ".") -> List[str]:
 
     return (file_list)
 
-
-def agent_modify_line(file_path: str, line_number: int, new_content: str) -> Optional[str]:
+@tool
+def modify_line(file_path: str, line_number: int, new_content: str) -> Optional[str]:
     """
         Modifies a specific line in a file based on a 1-indexed line number.
         
@@ -180,15 +179,15 @@ def agent_modify_line(file_path: str, line_number: int, new_content: str) -> Opt
 
 
 class Reflection(BaseModel):
-    effects: str = Field(description="What are the possible effects of executing the function calls in this instructions")
-    conflicts: str = Field(description="What are the possible conflicts that may arise from executing the function calls in this instructions")
-    needed: str = Field(description="What other function calls might still be needed to achieve the final goal")
-    unneeded: str = Field(description="What function calls might not be needed to achieve the final goal")
+    effects: str = Field(description="The possible effects of executing the function call in this instructions")
+    conflicts: str = Field(description="The possible conflicts that may arise from executing the function call in this instructions")
+    needed: str = Field(description="Other function calls that might still be needed to achieve the final goal")
+    unneeded: str = Field(description="Function calls that might not be needed to achieve the final goal")
 
 class Instructions(BaseModel):
-    explanation: str = Field(description="How the function calls in this instructions help achieve the final goal")
-    reflection: Reflection = Field(description="Self-critique of the sequence of functions")
-    function_calls: List[Dict[str, str]] = Field(description="Sequence of function calls (dictionary with keys `func_name` and `args`) to be executed towards the realization of the final goal")
+    explanation: str = Field(description="How the function call in this instructions help achieve the final goal")
+    reflection: Reflection = Field(description="Self-critique of the function call")
+    function_call: Dict[str, Any] = Field(description="A dictionary with keys `func_name` and `args`, characterizing a specific function call")
 
 
 def execute_tools(state: List[BaseMessage]) -> List[BaseMessage]: 
@@ -196,33 +195,58 @@ def execute_tools(state: List[BaseMessage]) -> List[BaseMessage]:
     last_message = state[-1]
 
     print(last_message)
+    print()
+    print(last_message.tool_calls)
     print("===============================================================\n")
 
     tools_map = {
-        "get_modified_files": get_modified_files,
-        "get_file_changes": get_file_changes,
-        "get_file_content": get_file_content,
-        "list_files_in_dir": list_files_in_dir,
-        "agent_modify_line": agent_modify_line
+        "DISCOVER_MODIFIED_FILES": get_modified_files,
+        "GET_FILE_CHANGES": get_file_changes,
+        "READ_FILE_CONTENT": get_file_content,
+        "DIR_LIST": list_files_in_dir,
+        "EDIT_LINE": modify_line
     }
 
     for tool_call in last_message.tool_calls:
         if tool_call["name"] == "Instructions":
-            instructions_tool_calls = tool_call["args"].get("instructions_tool_calls", [])
+            instruction = tool_call
+            instruction_args = instruction.get("args", [])
+            print(f"Explanation: {instruction_args['explanation']}")
+            print(f"Reflection: {instruction_args['reflection']}")
+            print(f"Function_call: {instruction_args['function_call']}")
 
-            for instructions_tool_call in instructions_tool_calls:
-                print(instructions_tool_call)
-                # Execute the sub-tool
-                result = tools_map[instructions_tool_call["fuction_name"]].invoke(instructions_tool_call["args"])
+            function_call = instruction_args['function_call']
+            print(f"Function call name: {function_call["func_name"]}")
+            print(f"Function call args: {function_call["args"]}")
 
-            tool_messages.append(
-                ToolMessage(content=str(result), tool_call_id=tool_call["id"])
-            )
+            # Extract the arguments payload
+            raw_args = function_call.get("args", {})
+            print(f"Raw arguments: {raw_args}")
+
+            # 1. Handle cases where it is an empty or raw string
+            if isinstance(raw_args, str):
+                if raw_args.strip() == "" or raw_args.strip() == "{}":
+                    args = {}
+                else:
+                    try:
+                        args = json.loads(raw_args)
+                    except json.JSONDecodeError:
+                        # Handle malformed strings from the LLM gracefully
+                        args = {}
+            # 2. If it's already a native Python dictionary, use it directly!
+            elif isinstance(raw_args, dict):
+                args = raw_args
+            else:
+                args = {}
+
+            print(f"Arguments: {args}")
+            result = tools_map[function_call["func_name"]].invoke(args)
+            print(f"Result: {result}\n\n")
+
+            tool_messages.append( ToolMessage(content=str(result), tool_call_id=tool_call["id"]) )
         else:
-            # Handle normal tool calls if they happen outside of "Instructions"
-            result = tools_map[tool_call["name"]].invoke(tool_call["args"])
-            tool_messages.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
-            
+            print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
     return (tool_messages)
 
 
@@ -244,61 +268,52 @@ if __name__ == "__main__":
     groq_api_key = os.getenv("GROQ_API_KEY")
     gcp_api_key = os.getenv("GCP_API_KEY")
 
-    os.environ["GROQ_API_KEY"] = groq_api_key  
+    os.environ["GROQ_API_KEY"] = groq_api_key
 
     llm_responder_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
-    # ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=gcp_api_key)
+    #llm_responder_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key=gcp_api_key)
     llm_revisor_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
-    # ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=gcp_api_key)
+    #llm_revisor_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key=gcp_api_key)
 
     # Prompt template definition
     prompt_template = ChatPromptTemplate.from_messages([
         (
             "system",
             """
-            You are a Reflexion Agent that can reason about the changes to be made in a GitHub repository.
+            {instruction}
+            To complete the goal, you will populate the 'Instructions' tool with an action token. 
+            Supported action tokens and their parameters:
+            
+            * Action Type: "DISCOVER_MODIFIED_FILES"
+            Parameters: None
+            
+            * Action Type: "GET_FILE_CHANGES"
+            Parameters: file_path (string)
+            
+            * Action Type: "READ_FILE_CONTENT"
+            Parameters: file_path (string)
+            
+            * Action Type: "DIR_LIST"
+            Parameters: folder_path (string)
+            
+            * Action Type: "EDIT_LINE"
+            Parameters: file_path (string), line_number (integer), new_content (string)
 
-            You must propose a plan by calling the 'Instructions' tool provided to you. Inside this tool, you can schedule an ordered sequence of operations using the following supported function names and arguments:
-                
-                get_modified_files
-                    Args: None
-                    Returns: List[str]
-
-                get_file_changes
-                    Args: modified_files (List[str])
-                    Returns: str
-
-                get_file_content
-                    Args: file_path (str), encoding (str)
-                    Returns: str
-
-                list_files_in_dir
-                    Args: folder_path (str)
-                    Returns: List[str]
-
-                agent_modify_line
-                    Args: file_path (str), line_number (int), new_content (str)
-                    Returns: Optional[str]
-
-            Follow these steps:
-                1. {instruction}
-                2. Think how the operations above can help achieve the final goal.
-                3. Reflect about the possible consequences of executing each operation.
-                4. Populate the 'Instructions' tool with the exact sequence required.
+            You must propose an action by calling the 'Instructions' tool provided to you. Do not attempt to invoke any external syntax.
             """
         ),
         MessagesPlaceholder(variable_name="messages"),
         (
-            "system",
-            "You must respond by executing the 'Instructions' structured tool mapping out your next steps."
+            "system", 
+            "You must respond strictly by executing the 'Instructions' structured tool."
         ),
     ])
 
     # Nodes logic definition
-    responder_instruction = ""
+    responder_instruction = "Use the 'Instructions' tool"
     responder_langchain_workflow = prompt_template.partial(instruction = responder_instruction) | llm_responder_langchain_workflow.bind_tools(tools=[Instructions])
 
-    revisor_instruction = ""
+    revisor_instruction = "If you have all the information needed, don't use the 'Instructions' tool anymore "
     revisor_langchain_workflow = prompt_template.partial(instruction = revisor_instruction) | llm_revisor_langchain_workflow.bind_tools(tools=[Instructions])
 
     # Graph definition
@@ -318,7 +333,7 @@ if __name__ == "__main__":
     app = graph.compile()
     responses = app.invoke(
         """
-            Add a `return(0)` statement at the bottom of the main function of the file test.py, without modifying the rest of the code.
+            Summary the content of the files in folder `./tests`.
         """
     )
 
