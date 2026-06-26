@@ -276,7 +276,7 @@ if __name__ == "__main__":
     groq_api_key = os.getenv("GROQ_API_KEY")
     gcp_api_key = os.getenv("GCP_API_KEY")
 
-    os.environ["GROQ_API_KEY"] = groq_api_key
+    #os.environ["GROQ_API_KEY"] = groq_api_key
 
     #llm_responder_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
     llm_responder_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=gcp_api_key)
@@ -344,7 +344,7 @@ if __name__ == "__main__":
     app = graph.compile()
     responses = app.invoke(
         """
-            Solve the typos in the file `./tests/test.py`.
+            Import numpy in file `tests/test.py`.
         """
     )
 

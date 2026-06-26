@@ -1,0 +1,25 @@
+C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\main.py:331: LangGraphDeprecatedSinceV10: MessageGraph is deprecated in LangGraph v1.0.0, to be removed in v2.0.0. Please use StateGraph with a `messages` key instead. Deprecated in LangGraph V1.0 to be removed in V2.0.
+  graph = MessageGraph()
+Explanation: I need to read the content of the file `tests/test.py` to summarize it. The `READ_FILE_CONTENT` action will allow me to retrieve the content of the specified file.
+Reflection: {'needed': 'After reading the file, I will need to process the content to generate a summary.', 'effects': 'The content of `tests/test.py` will be retrieved, allowing me to analyze and summarize it.', 'unneeded': 'No other actions are needed at this stage.', 'conflicts': 'No conflicts are expected as this is a read-only operation.'}
+Function_call: {'args': {'file_path': 'tests/test.py'}, 'func_name': 'READ_FILE_CONTENT'}
+Arguments: {'file_path': 'tests/test.py'}
+Result: def helloworld():
+    print('Hello, World!')
+print(helloworld())
+print("Hello World!")
+
+
+
+
+
+
+Number of messages in the history: 4 (See details below)
+
+Message No. 0: content='\n            Summarize the content of file `tests/test.py`.\n        ' additional_kwargs={} response_metadata={} id='7d78015b-05dc-453a-9909-e9ceca1f436e'
+
+Message No. 1: content='' additional_kwargs={'function_call': {'name': 'Instructions', 'arguments': '{"function_call": {"args": {"file_path": "tests/test.py"}, "func_name": "READ_FILE_CONTENT"}, "explanation": "I need to read the content of the file `tests/test.py` to summarize it. The `READ_FILE_CONTENT` action will allow me to retrieve the content of the specified file.", "reflection": {"needed": "After reading the file, I will need to process the content to generate a summary.", "effects": "The content of `tests/test.py` will be retrieved, allowing me to analyze and summarize it.", "unneeded": "No other actions are needed at this stage.", "conflicts": "No conflicts are expected as this is a read-only operation."}}'}} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f049f-2934-7c02-95ff-ba478478dcac-0' tool_calls=[{'name': 'Instructions', 'args': {'function_call': {'args': {'file_path': 'tests/test.py'}, 'func_name': 'READ_FILE_CONTENT'}, 'explanation': 'I need to read the content of the file `tests/test.py` to summarize it. The `READ_FILE_CONTENT` action will allow me to retrieve the content of the specified file.', 'reflection': {'needed': 'After reading the file, I will need to process the content to generate a summary.', 'effects': 'The content of `tests/test.py` will be retrieved, allowing me to analyze and summarize it.', 'unneeded': 'No other actions are needed at this stage.', 'conflicts': 'No conflicts are expected as this is a read-only operation.'}}, 'id': 'f0d2072a-7b4a-439f-b5c1-204894029795', 'type': 'tool_call'}] usage_metadata={'input_tokens': 473, 'output_tokens': 213, 'total_tokens': 686, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 48}}
+
+Message No. 2: content='def helloworld():\n    print(\'Hello, World!\')\nprint(helloworld())\nprint("Hello World!")\n\n' id='f2930ce9-afb1-4104-b163-df0465149900' tool_call_id='f0d2072a-7b4a-439f-b5c1-204894029795'
+
+Message No. 3: content='The file `tests/test.py` contains a Python function `helloworld` that prints "Hello, World!". The file then calls this function and also prints "Hello World!" directly. In essence, the file demonstrates a basic "Hello World" output using both a function call and a direct print statement.' additional_kwargs={} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f049f-2f36-73b2-8e20-528672f8d843-0' usage_metadata={'input_tokens': 684, 'output_tokens': 94, 'total_tokens': 778, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 32}}

@@ -1,0 +1,22 @@
+C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\venv\Lib\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\main.py:331: LangGraphDeprecatedSinceV10: MessageGraph is deprecated in LangGraph v1.0.0, to be removed in v2.0.0. Please use StateGraph with a `messages` key instead. Deprecated in LangGraph V1.0 to be removed in V2.0.
+  graph = MessageGraph()
+Explanation: The user wants to delete the content of line 3 in the file `tests/test.py`. The `EDIT_LINE` action can be used to modify a specific line in a file. To delete the content, I should set `new_content` to an empty string.
+Reflection: {'needed': 'None', 'effects': 'The content of line 3 in `tests/test.py` will be deleted.', 'unneeded': 'None', 'conflicts': 'None'}
+Function_call: {'args': {'file_path': 'tests/test.py', 'line_number': 3.0, 'new_content': ''}, 'func_name': 'EDIT_LINE'}
+Arguments: {'file_path': 'tests/test.py', 'line_number': 3.0, 'new_content': ''}
+Result: Success: Modified line 3 in 'tests/test.py'.
+
+
+
+
+Number of messages in the history: 4 (See details below)
+
+Message No. 0: content='\n            Delete the content in line 3 of file `tests/test.py`.\n        ' additional_kwargs={} response_metadata={} id='2766cf83-de57-47e6-9fbd-c19bf75b7412'
+
+Message No. 1: content='' additional_kwargs={'function_call': {'name': 'Instructions', 'arguments': '{"reflection": {"needed": "None", "effects": "The content of line 3 in `tests/test.py` will be deleted.", "unneeded": "None", "conflicts": "None"}, "function_call": {"args": {"file_path": "tests/test.py", "line_number": 3.0, "new_content": ""}, "func_name": "EDIT_LINE"}, "explanation": "The user wants to delete the content of line 3 in the file `tests/test.py`. The `EDIT_LINE` action can be used to modify a specific line in a file. To delete the content, I should set `new_content` to an empty string."}'}} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f04a0-9622-7d11-9126-12e94b971fcd-0' tool_calls=[{'name': 'Instructions', 'args': {'reflection': {'needed': 'None', 'effects': 'The content of line 3 in `tests/test.py` will be deleted.', 'unneeded': 'None', 'conflicts': 'None'}, 'function_call': {'args': {'file_path': 'tests/test.py', 'line_number': 3.0, 'new_content': ''}, 'func_name': 'EDIT_LINE'}, 'explanation': 'The user wants to delete the content of line 3 in the file `tests/test.py`. The `EDIT_LINE` action can be used to modify a specific line in a file. To delete the content, I should set `new_content` to an empty string.'}, 'id': '5319c838-ee0e-4042-80c0-8303c94dad62', 'type': 'tool_call'}] usage_metadata={'input_tokens': 476, 'output_tokens': 218, 'total_tokens': 694, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 60}}
+
+Message No. 2: content="Success: Modified line 3 in 'tests/test.py'." id='0f3c2d04-5154-4890-8ca6-cc704170ef09' tool_call_id='5319c838-ee0e-4042-80c0-8303c94dad62'
+
+Message No. 3: content='I have deleted the content in line 3 of the file `tests/test.py`.' additional_kwargs={} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f04a0-9c32-7f61-9ad0-fe0e731fec65-0' usage_metadata={'input_tokens': 661, 'output_tokens': 19, 'total_tokens': 680, 'input_token_details': {'cache_read': 0}}
