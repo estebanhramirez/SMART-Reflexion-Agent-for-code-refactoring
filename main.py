@@ -194,10 +194,10 @@ def execute_tools(state: List[BaseMessage]) -> List[BaseMessage]:
     tool_messages = []
     last_message = state[-1]
 
-    print(last_message)
-    print()
-    print(last_message.tool_calls)
-    print("===============================================================\n")
+    #print(last_message)
+    #print()
+    #print(last_message.tool_calls)
+    #print("===============================================================\n")
 
     tools_map = {
         "DISCOVER_MODIFIED_FILES": get_modified_files,
@@ -216,12 +216,12 @@ def execute_tools(state: List[BaseMessage]) -> List[BaseMessage]:
             print(f"Function_call: {instruction_args['function_call']}")
 
             function_call = instruction_args['function_call']
-            print(f"Function call name: {function_call["func_name"]}")
-            print(f"Function call args: {function_call["args"]}")
+            #print(f"Function call name: {function_call["func_name"]}")
+            #print(f"Function call args: {function_call["args"]}")
 
             # Extract the arguments payload
             raw_args = function_call.get("args", {})
-            print(f"Raw arguments: {raw_args}")
+            #print(f"Raw arguments: {raw_args}")
 
             # 1. Handle cases where it is an empty or raw string
             if isinstance(raw_args, str):
@@ -251,12 +251,20 @@ def execute_tools(state: List[BaseMessage]) -> List[BaseMessage]:
 
 
 def event_loop(state: List[BaseMessage]) -> str:
-    count_tool_visits = sum(isinstance(item, ToolMessage) for item in state)
-    num_iterations = count_tool_visits
-    print(f"---------------------> {num_iterations}")
-    if num_iterations >= 5:
+    last_message = state[-1]
+
+
+    if last_message.tool_calls == []:
         return END
-    return "execute_tools"
+    else:
+        instruction = last_message.tool_calls[-1]
+
+        if instruction["name"] == "Instructions":
+            return "execute_tools"
+        else:
+            print("++++++++++++++++++++++++++++++++ Last message +++++++++++++++++++++++++++++++++++++++++")
+            print(last_message)
+            return END
 
 
 
@@ -270,36 +278,39 @@ if __name__ == "__main__":
 
     os.environ["GROQ_API_KEY"] = groq_api_key
 
-    llm_responder_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
-    #llm_responder_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key=gcp_api_key)
-    llm_revisor_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
-    #llm_revisor_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key=gcp_api_key)
+    #llm_responder_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
+    llm_responder_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=gcp_api_key)
+    #llm_revisor_langchain_workflow = ChatGroq(model="llama-3.1-8b-instant", temperature=0.6)
+    llm_revisor_langchain_workflow = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=gcp_api_key)
 
     # Prompt template definition
     prompt_template = ChatPromptTemplate.from_messages([
         (
             "system",
             """
-            {instruction}
-            To complete the goal, you will populate the 'Instructions' tool with an action token. 
-            Supported action tokens and their parameters:
-            
+            You are a Reflexion agent with access to only one Pydantic tool. {instruction}
+
+            You must propose an action by calling the 'Instructions' tool provided to you. Do not attempt to invoke any tool.
+
+            The following are the supported action tokens and their parameters:
+
             * Action Type: "DISCOVER_MODIFIED_FILES"
-            Parameters: None
+                Parameters: None
             
             * Action Type: "GET_FILE_CHANGES"
-            Parameters: file_path (string)
+                Parameters: file_path (string)
             
             * Action Type: "READ_FILE_CONTENT"
-            Parameters: file_path (string)
+                Parameters: file_path (string)
             
             * Action Type: "DIR_LIST"
-            Parameters: folder_path (string)
+                Parameters: folder_path (string)
             
             * Action Type: "EDIT_LINE"
-            Parameters: file_path (string), line_number (integer), new_content (string)
+                Parameters: file_path (string), line_number (integer), new_content (string)
 
-            You must propose an action by calling the 'Instructions' tool provided to you. Do not attempt to invoke any external syntax.
+            If you think the task is done, generate a natural language response with your answer.
+            Otherwise, populate the 'Instructions' tool with an action token.
             """
         ),
         MessagesPlaceholder(variable_name="messages"),
@@ -310,10 +321,10 @@ if __name__ == "__main__":
     ])
 
     # Nodes logic definition
-    responder_instruction = "Use the 'Instructions' tool"
+    responder_instruction = ""
     responder_langchain_workflow = prompt_template.partial(instruction = responder_instruction) | llm_responder_langchain_workflow.bind_tools(tools=[Instructions])
 
-    revisor_instruction = "If you have all the information needed, don't use the 'Instructions' tool anymore "
+    revisor_instruction = ""
     revisor_langchain_workflow = prompt_template.partial(instruction = revisor_instruction) | llm_revisor_langchain_workflow.bind_tools(tools=[Instructions])
 
     # Graph definition
@@ -333,7 +344,7 @@ if __name__ == "__main__":
     app = graph.compile()
     responses = app.invoke(
         """
-            Summary the content of the files in folder `./tests`.
+            Solve the typos in the file `./tests/test.py`.
         """
     )
 

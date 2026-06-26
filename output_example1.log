@@ -1,0 +1,37 @@
+C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\venv\Lib\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\main.py:331: LangGraphDeprecatedSinceV10: MessageGraph is deprecated in LangGraph v1.0.0, to be removed in v2.0.0. Please use StateGraph with a `messages` key instead. Deprecated in LangGraph V1.0 to be removed in V2.0.
+  graph = MessageGraph()
+Explanation: First, I need to list all the files in the `./tests` directory to know which files to read.
+Reflection: {'needed': 'Read the content of each file and then summarize them.', 'effects': 'I will get a list of files in the `./tests` directory.', 'unneeded': 'None.', 'conflicts': 'None that I can foresee.'}
+Function_call: {'args': {'folder_path': './tests'}, 'func_name': 'DIR_LIST'}
+Arguments: {'folder_path': './tests'}
+Result: ['C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py']
+
+
+Explanation: Now that I have the list of files, I need to read the content of each file to be able to summarize them. I will start with `C:\Projects\Agentic-AI\SMART-Reflexion-Agent-for-code-refactoring\Repo\tests\test.py`.
+Reflection: {'effects': 'I will get the content of the file `C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py`.', 'needed': 'Summarize the content of the file.', 'unneeded': 'None.', 'conflicts': 'None that I can foresee.'}
+Function_call: {'args': {'file_path': 'C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py'}, 'func_name': 'READ_FILE_CONTENT'}
+Arguments: {'file_path': 'C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py'}
+Result: def helloworld():
+    print('Hello, World!')
+print(HelloWorld)
+print("Hello World!")
+    # Insert return statement here
+
+
+
+
+Number of messages in the history: 6 (See details below)
+
+Message No. 0: content='\n            Summary the content of the files in folder `./tests`.\n        ' additional_kwargs={} response_metadata={} id='ea8c0350-ef7f-4a99-9795-349eaad5c366'
+
+Message No. 1: content='' additional_kwargs={'function_call': {'name': 'Instructions', 'arguments': '{"function_call": {"args": {"folder_path": "./tests"}, "func_name": "DIR_LIST"}, "explanation": "First, I need to list all the files in the `./tests` directory to know which files to read.", "reflection": {"needed": "Read the content of each file and then summarize them.", "effects": "I will get a list of files in the `./tests` directory.", "unneeded": "None.", "conflicts": "None that I can foresee."}}'}} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f0484-811d-7363-92d3-e992fe5f4980-0' tool_calls=[{'name': 'Instructions', 'args': {'function_call': {'args': {'folder_path': './tests'}, 'func_name': 'DIR_LIST'}, 'explanation': 'First, I need to list all the files in the `./tests` directory to know which files to read.', 'reflection': {'needed': 'Read the content of each file and then summarize them.', 'effects': 'I will get a list of files in the `./tests` directory.', 'unneeded': 'None.', 'conflicts': 'None that I can foresee.'}}, 'id': '8452ab21-c96d-4feb-a37e-88b5292ae25e', 'type': 'tool_call'}] usage_metadata={'input_tokens': 471, 'output_tokens': 190, 'total_tokens': 661, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 78}}
+
+Message No. 2: content="['C:\\\\Projects\\\\Agentic-AI\\\\SMART-Reflexion-Agent-for-code-refactoring\\\\Repo\\\\tests\\\\test.py']" id='9a6b3670-4e7d-4fbd-92ef-a5f040a64772' tool_call_id='8452ab21-c96d-4feb-a37e-88b5292ae25e'
+
+Message No. 3: content='' additional_kwargs={'function_call': {'name': 'Instructions', 'arguments': '{"explanation": "Now that I have the list of files, I need to read the content of each file to be able to summarize them. I will start with `C:\\\\Projects\\\\Agentic-AI\\\\SMART-Reflexion-Agent-for-code-refactoring\\\\Repo\\\\tests\\\\test.py`.", "reflection": {"effects": "I will get the content of the file `C:\\\\Projects\\\\Agentic-AI\\\\SMART-Reflexion-Agent-for-code-refactoring\\\\Repo\\\\tests\\\\test.py`.", "needed": "Summarize the content of the file.", "unneeded": "None.", "conflicts": "None that I can foresee."}, "function_call": {"args": {"file_path": "C:\\\\Projects\\\\Agentic-AI\\\\SMART-Reflexion-Agent-for-code-refactoring\\\\Repo\\\\tests\\\\test.py"}, "func_name": "READ_FILE_CONTENT"}}'}} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f0484-8600-7741-a50b-edbc4182db2b-0' tool_calls=[{'name': 'Instructions', 'args': {'explanation': 'Now that I have the list of files, I need to read the content of each file to be able to summarize them. I will start with `C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py`.', 'reflection': {'effects': 'I will get the content of the file `C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py`.', 'needed': 'Summarize the content of the file.', 'unneeded': 'None.', 'conflicts': 'None that I can foresee.'}, 'function_call': {'args': {'file_path': 'C:\\Projects\\Agentic-AI\\SMART-Reflexion-Agent-for-code-refactoring\\Repo\\tests\\test.py'}, 'func_name': 'READ_FILE_CONTENT'}}, 'id': 'cb1c7592-bc22-4027-b0ed-74b7c579f8bd', 'type': 'tool_call'}] usage_metadata={'input_tokens': 632, 'output_tokens': 299, 'total_tokens': 931, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 86}}
+
+Message No. 4: content='def helloworld():\n    print(\'Hello, World!\')\nprint(HelloWorld)\nprint("Hello World!")\n    # Insert return statement here' id='476f93b1-78ad-4859-9045-74ad1ac5bab6' tool_call_id='cb1c7592-bc22-4027-b0ed-74b7c579f8bd'
+
+Message No. 5: content='The file `C:\\\\Projects\\\\Agentic-AI\\\\SMART-Reflexion-Agent-for-code-refactoring\\\\Repo\\\\tests\\\\test.py` defines a function `helloworld` which prints "Hello, World!". It also contains two print statements: one attempts to print `HelloWorld` (likely a typo or undefined variable) and another prints "Hello World!". There\'s also a comment indicating a return statement should be inserted.' additional_kwargs={} response_metadata={'prompt_feedback': {'block_reason': 0, 'safety_ratings': []}, 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash', 'safety_ratings': []} id='run--019f0484-8ced-7f10-983e-325623f0a9f9-0' usage_metadata={'input_tokens': 894, 'output_tokens': 275, 'total_tokens': 1169, 'input_token_details': {'cache_read': 0}, 'output_token_details': {'reasoning': 183}}
